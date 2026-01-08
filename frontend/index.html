@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -32,7 +33,7 @@
         .header h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
         }
 
         .header p {
@@ -51,7 +52,7 @@
             background: white;
             border-radius: 15px;
             padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
 
         .card h2 {
@@ -174,7 +175,7 @@
         }
 
         .source-item:hover {
-            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
         }
 
         .source-header {
@@ -251,8 +252,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .hidden {
@@ -286,6 +292,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -309,11 +316,8 @@
             <!-- Query Section -->
             <div class="card">
                 <h2>💬 Ask Questions</h2>
-                <textarea 
-                    class="query-input" 
-                    id="queryInput" 
-                    placeholder="Ask a question about your uploaded documents...&#10;&#10;Example: What is the refund policy?"
-                ></textarea>
+                <textarea class="query-input" id="queryInput"
+                    placeholder="Ask a question about your uploaded documents...&#10;&#10;Example: What is the refund policy?"></textarea>
                 <button class="btn" id="queryBtn">Ask Question</button>
             </div>
         </div>
@@ -321,7 +325,7 @@
         <!-- Results Section -->
         <div class="card result-card hidden" id="resultCard">
             <h2>✨ Answer</h2>
-            
+
             <div id="loadingSection" class="loading hidden">
                 <div class="spinner"></div>
                 <p>Processing your question through the multi-agent system...</p>
@@ -329,7 +333,8 @@
 
             <div id="answerSection" class="hidden">
                 <div class="answer-section">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <h3>Answer</h3>
                         <span id="verificationBadge" class="status-badge"></span>
                     </div>
@@ -435,7 +440,7 @@
 
         async function handleQuery() {
             const question = queryInput.value.trim();
-            
+
             if (!question) {
                 alert('Please enter a question');
                 return;
@@ -475,31 +480,84 @@
             }
         }
 
+        function formatAnswerText(text) {
+            if (!text) return '';
+
+            // Convert email addresses to clickable links
+            text = text.replace(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi,
+                '<a href="mailto:$1" style="color: #667eea; text-decoration: none; font-weight: 500;">$1</a>');
+
+            // Convert phone numbers to clickable links
+            text = text.replace(/(\+?\d{1}\s?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4})/g,
+                '<a href="tel:$1" style="color: #667eea; text-decoration: none; font-weight: 500;">$1</a>');
+
+            // Convert bullet points (*, -, •) to proper HTML list items
+            const lines = text.split('\n');
+            let formattedLines = [];
+            let inList = false;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+
+                // Check if line starts with bullet point
+                if (line.match(/^[*•-]\s+(.+)/)) {
+                    const content = line.replace(/^[*•-]\s+/, '');
+                    if (!inList) {
+                        formattedLines.push('<ul style="margin: 10px 0; padding-left: 20px;">');
+                        inList = true;
+                    }
+                    formattedLines.push(`<li style="margin: 5px 0; line-height: 1.6;">${content}</li>`);
+                } else {
+                    if (inList) {
+                        formattedLines.push('</ul>');
+                        inList = false;
+                    }
+                    if (line) {
+                        // Check if line contains labels like "Mail:", "Phone:", "Email:"
+                        const labelMatch = line.match(/^(\*\*)?([A-Za-z]+):(\*\*)?\s*(.+)/);
+                        if (labelMatch) {
+                            const label = labelMatch[2];
+                            const value = labelMatch[4];
+                            formattedLines.push(`<p style="margin: 8px 0;"><strong style="color: #667eea;">${label}:</strong> ${value}</p>`);
+                        } else {
+                            formattedLines.push(`<p style="margin: 8px 0;">${line}</p>`);
+                        }
+                    }
+                }
+            }
+
+            if (inList) {
+                formattedLines.push('</ul>');
+            }
+
+            return formattedLines.join('');
+        }
+
         function displayResults(data) {
             // Answer
             const answerText = document.getElementById('answerText');
             if (answerText && data.answer) {
-                answerText.textContent = data.answer;
+                answerText.innerHTML = formatAnswerText(data.answer);
             }
-            
+
             // Reasoning
             const reasoningText = document.getElementById('reasoningText');
             if (reasoningText && data.reasoning) {
                 reasoningText.textContent = data.reasoning;
             }
-            
+
             // Verification badge
             const badge = document.getElementById('verificationBadge');
             if (badge && data.verification_status) {
                 badge.textContent = data.verification_status;
                 badge.className = 'status-badge status-' + data.verification_status;
             }
-            
+
             // Warnings
             const warningsSection = document.getElementById('warningsSection');
             if (warningsSection) {
                 if (data.warnings && data.warnings.length > 0) {
-                    warningsSection.innerHTML = data.warnings.map(w => 
+                    warningsSection.innerHTML = data.warnings.map(w =>
                         `<div class="warning">⚠️ ${w}</div>`
                     ).join('');
                     warningsSection.classList.remove('hidden');
@@ -507,7 +565,7 @@
                     warningsSection.classList.add('hidden');
                 }
             }
-            
+
             // Sources
             const sourcesContainer = document.getElementById('sourcesContainer');
             if (sourcesContainer) {
@@ -525,7 +583,7 @@
                     sourcesContainer.innerHTML = '<p style="color: #666;">No sources available</p>';
                 }
             }
-            
+
             const answerSectionEl = document.getElementById('answerSection');
             if (answerSectionEl) {
                 answerSectionEl.classList.remove('hidden');
@@ -533,4 +591,5 @@
         }
     </script>
 </body>
+
 </html>
