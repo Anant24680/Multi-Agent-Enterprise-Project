@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent Enterprise Knowledge System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .upload-section {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            background: #f8f9ff;
+            border-color: #764ba2;
+        }
+
+        .upload-section.dragover {
+            background: #f0f2ff;
+            border-color: #764ba2;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .query-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+        }
+
+        .query-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-card {
+            grid-column: 1 / -1;
+        }
+
+        .answer-section {
+            background: #f8f9ff;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .answer-section h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+
+        .answer-text {
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .sources-section {
+            margin-top: 20px;
+        }
+
+        .source-item {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: box-shadow 0.2s;
+        }
+
+        .source-item:hover {
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .source-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .source-filename {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .source-meta {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .source-content {
+            color: #555;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            border-top: 1px solid #f0f0f0;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-verified {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-partial {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-unverified {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Multi-Agent Knowledge System</h1>
+            <p>Upload documents and ask questions with AI-powered answers and citations</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Upload Section -->
+            <div class="card">
+                <h2>📄 Upload Documents</h2>
+                <div class="upload-section" id="uploadSection">
+                    <div class="upload-icon">📁</div>
+                    <p><strong>Click to upload</strong> or drag and drop</p>
+                    <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">PDF files only</p>
+                    <input type="file" id="fileInput" accept=".pdf">
+                </div>
+                <div id="uploadStatus"></div>
+            </div>
+
+            <!-- Query Section -->
+            <div class="card">
+                <h2>💬 Ask Questions</h2>
+                <textarea 
+                    class="query-input" 
+                    id="queryInput" 
+                    placeholder="Ask a question about your uploaded documents...&#10;&#10;Example: What is the refund policy?"
+                ></textarea>
+                <button class="btn" id="queryBtn">Ask Question</button>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="card result-card hidden" id="resultCard">
+            <h2>✨ Answer</h2>
+            
+            <div id="loadingSection" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Processing your question through the multi-agent system...</p>
+            </div>
+
+            <div id="answerSection" class="hidden">
+                <div class="answer-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3>Answer</h3>
+                        <span id="verificationBadge" class="status-badge"></span>
+                    </div>
+                    <div class="answer-text" id="answerText"></div>
+                </div>
+
+                <div id="warningsSection" class="hidden"></div>
+
+                <div class="answer-section" style="background: #fff9e6; border-left-color: #ffc107;">
+                    <h3>🧠 Reasoning</h3>
+                    <div class="answer-text" id="reasoningText"></div>
+                </div>
+
+                <div class="sources-section">
+                    <h3 style="margin-bottom: 15px;">📚 Sources</h3>
+                    <div id="sourcesContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+
+        // Upload functionality
+        const uploadSection = document.getElementById('uploadSection');
+        const fileInput = document.getElementById('fileInput');
+        const uploadStatus = document.getElementById('uploadStatus');
+
+        uploadSection.addEventListener('click', () => fileInput.click());
+
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        async function handleFileUpload(file) {
+            if (!file.name.endsWith('.pdf')) {
+                uploadStatus.innerHTML = '<div class="error-message">Please upload a PDF file</div>';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            uploadStatus.innerHTML = '<div class="loading"><div class="spinner"></div><p>Uploading and processing...</p></div>';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    uploadStatus.innerHTML = `
+                        <div class="success-message">
+                            ✓ Successfully uploaded <strong>${data.filename}</strong><br>
+                            Created ${data.chunks_created} searchable chunks
+                        </div>
+                    `;
+                } else {
+                    uploadStatus.innerHTML = `<div class="error-message">Error: ${data.detail}</div>`;
+                }
+            } catch (error) {
+                uploadStatus.innerHTML = `<div class="error-message">Upload failed: ${error.message}</div>`;
+            }
+        }
+
+        // Query functionality
+        const queryBtn = document.getElementById('queryBtn');
+        const queryInput = document.getElementById('queryInput');
+        const resultCard = document.getElementById('resultCard');
+        const loadingSection = document.getElementById('loadingSection');
+        const answerSection = document.getElementById('answerSection');
+
+        queryBtn.addEventListener('click', handleQuery);
+        queryInput.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                handleQuery();
+            }
+        });
+
+        async function handleQuery() {
+            const question = queryInput.value.trim();
+            
+            if (!question) {
+                alert('Please enter a question');
+                return;
+            }
+
+            // Show loading
+            resultCard.classList.remove('hidden');
+            loadingSection.classList.remove('hidden');
+            answerSection.classList.add('hidden');
+            queryBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/query`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        top_k: 5
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    displayResults(data);
+                } else {
+                    throw new Error(data.detail || 'Query failed');
+                }
+            } catch (error) {
+                answerSection.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
+                answerSection.classList.remove('hidden');
+            } finally {
+                loadingSection.classList.add('hidden');
+                queryBtn.disabled = false;
+            }
+        }
+
+        function displayResults(data) {
+            // Answer
+            document.getElementById('answerText').textContent = data.answer;
+            
+            // Reasoning
+            document.getElementById('reasoningText').textContent = data.reasoning;
+            
+            // Verification badge
+            const badge = document.getElementById('verificationBadge');
+            badge.textContent = data.verification_status;
+            badge.className = 'status-badge status-' + data.verification_status;
+            
+            // Warnings
+            const warningsSection = document.getElementById('warningsSection');
+            if (data.warnings && data.warnings.length > 0) {
+                warningsSection.innerHTML = data.warnings.map(w => 
+                    `<div class="warning">⚠️ ${w}</div>`
+                ).join('');
+                warningsSection.classList.remove('hidden');
+            } else {
+                warningsSection.classList.add('hidden');
+            }
+            
+            // Sources
+            const sourcesContainer = document.getElementById('sourcesContainer');
+            if (data.sources && data.sources.length > 0) {
+                sourcesContainer.innerHTML = data.sources.map((source, idx) => `
+                    <div class="source-item">
+                        <div class="source-header">
+                            <span class="source-filename">📄 ${source.filename}</span>
+                            <span class="source-meta">Page ${source.page || 'N/A'} • Relevance: ${(source.relevance_score * 100).toFixed(1)}%</span>
+                        </div>
+                        <div class="source-content">${source.content.substring(0, 300)}${source.content.length > 300 ? '...' : ''}</div>
+                    </div>
+                `).join('');
+            } else {
+                sourcesContainer.innerHTML = '<p style="color: #666;">No sources available</p>';
+            }
+            
+            answerSection.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

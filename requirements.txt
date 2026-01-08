@@ -1,0 +1,27 @@
+# FastAPI and Web Server
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+
+# LangChain and AI
+langchain>=0.1.6
+langchain-community>=0.0.38
+langchain-core>=0.1.0
+langgraph>=0.0.20
+langchain-google-genai>=1.0.1
+
+# Vector Store and Embeddings
+faiss-cpu>=1.13.2
+
+# Document Processing
+PyMuPDF>=1.24.0
+
+# Data Validation
+pydantic>=2.10.0
+pydantic-settings>=2.7.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Utilities
+tiktoken>=0.5.2
