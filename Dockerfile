@@ -27,7 +27,6 @@ COPY --from=builder /root/.local /root/.local
 # Copy application code
 COPY app/ ./app/
 COPY frontend/ ./frontend/
-COPY .env.example .env
 
 # Create necessary directories
 RUN mkdir -p data/documents app/db/faiss_index
