@@ -477,44 +477,59 @@
 
         function displayResults(data) {
             // Answer
-            document.getElementById('answerText').textContent = data.answer;
+            const answerText = document.getElementById('answerText');
+            if (answerText && data.answer) {
+                answerText.textContent = data.answer;
+            }
             
             // Reasoning
-            document.getElementById('reasoningText').textContent = data.reasoning;
+            const reasoningText = document.getElementById('reasoningText');
+            if (reasoningText && data.reasoning) {
+                reasoningText.textContent = data.reasoning;
+            }
             
             // Verification badge
             const badge = document.getElementById('verificationBadge');
-            badge.textContent = data.verification_status;
-            badge.className = 'status-badge status-' + data.verification_status;
+            if (badge && data.verification_status) {
+                badge.textContent = data.verification_status;
+                badge.className = 'status-badge status-' + data.verification_status;
+            }
             
             // Warnings
             const warningsSection = document.getElementById('warningsSection');
-            if (data.warnings && data.warnings.length > 0) {
-                warningsSection.innerHTML = data.warnings.map(w => 
-                    `<div class="warning">⚠️ ${w}</div>`
-                ).join('');
-                warningsSection.classList.remove('hidden');
-            } else {
-                warningsSection.classList.add('hidden');
+            if (warningsSection) {
+                if (data.warnings && data.warnings.length > 0) {
+                    warningsSection.innerHTML = data.warnings.map(w => 
+                        `<div class="warning">⚠️ ${w}</div>`
+                    ).join('');
+                    warningsSection.classList.remove('hidden');
+                } else {
+                    warningsSection.classList.add('hidden');
+                }
             }
             
             // Sources
             const sourcesContainer = document.getElementById('sourcesContainer');
-            if (data.sources && data.sources.length > 0) {
-                sourcesContainer.innerHTML = data.sources.map((source, idx) => `
-                    <div class="source-item">
-                        <div class="source-header">
-                            <span class="source-filename">📄 ${source.filename}</span>
-                            <span class="source-meta">Page ${source.page || 'N/A'} • Relevance: ${(source.relevance_score * 100).toFixed(1)}%</span>
+            if (sourcesContainer) {
+                if (data.sources && data.sources.length > 0) {
+                    sourcesContainer.innerHTML = data.sources.map((source, idx) => `
+                        <div class="source-item">
+                            <div class="source-header">
+                                <span class="source-filename">📄 ${source.filename || 'Unknown'}</span>
+                                <span class="source-meta">Page ${source.page || 'N/A'} • Relevance: ${source.relevance_score ? (source.relevance_score * 100).toFixed(1) : 'N/A'}%</span>
+                            </div>
+                            <div class="source-content">${source.content ? source.content.substring(0, 300) : ''}${source.content && source.content.length > 300 ? '...' : ''}</div>
                         </div>
-                        <div class="source-content">${source.content.substring(0, 300)}${source.content.length > 300 ? '...' : ''}</div>
-                    </div>
-                `).join('');
-            } else {
-                sourcesContainer.innerHTML = '<p style="color: #666;">No sources available</p>';
+                    `).join('');
+                } else {
+                    sourcesContainer.innerHTML = '<p style="color: #666;">No sources available</p>';
+                }
             }
             
-            answerSection.classList.remove('hidden');
+            const answerSectionEl = document.getElementById('answerSection');
+            if (answerSectionEl) {
+                answerSectionEl.classList.remove('hidden');
+            }
         }
     </script>
 </body>
