@@ -11,17 +11,36 @@ from app.models.schemas import DocumentChunk
 
 
 class VectorStore:
-    """FAISS vector store for document search."""
+    """Handles document storage and similarity search using FAISS."""
     
-    def __init__(self, index_path: str = "app/db/faiss_index", google_api_key: Optional[str] = None):
+    def __init__(self, index_path: str = "app/db/faiss_index", api_key_manager=None, google_api_key: Optional[str] = None):
+        """
+        Set up the vector store.
+        
+        Args:
+            index_path: Where to save/load the FAISS index
+            api_key_manager: Key manager for handling rate limits (recommended)
+            google_api_key: Single API key if not using the manager
+        """
         self.index_path = index_path
-        self.embeddings = GoogleGenerativeAIEmbeddings(
-            model="models/text-embedding-004",
-            google_api_key=google_api_key
-        )
+        self.api_key_manager = api_key_manager
+        
+        # Use the key manager if we have one, otherwise just use a single key
+        if api_key_manager:
+            current_key = api_key_manager.get_next_key()
+            self.embeddings = GoogleGenerativeAIEmbeddings(
+                model="models/text-embedding-004",
+                google_api_key=current_key
+            )
+        else:
+            self.embeddings = GoogleGenerativeAIEmbeddings(
+                model="models/text-embedding-004",
+                google_api_key=google_api_key
+            )
+        
         self.vector_store: Optional[FAISS] = None
         
-        # Load existing index if available
+        # Try to load an existing index if it's there
         if os.path.exists(index_path):
             try:
                 self.load()
@@ -31,7 +50,20 @@ class VectorStore:
                 self.vector_store = None
     
     def add_documents(self, chunks: List[DocumentChunk]) -> int:
-        """Add document chunks to the index."""
+        """Add document chunks to the search index."""
+        # Get a fresh key if we're rotating
+        if self.api_key_manager:
+            try:
+                current_key = self.api_key_manager.get_next_key()
+                self.embeddings = GoogleGenerativeAIEmbeddings(
+                    model="models/text-embedding-004",
+                    google_api_key=current_key
+                )
+            except RuntimeError as e:
+                print(f"❌ Key rotation error: {e}")
+                raise
+        
+        # Convert our chunks into LangChain's document format
         documents = [
             Document(
                 page_content=chunk.content,
@@ -45,6 +77,7 @@ class VectorStore:
             for chunk in chunks
         ]
         
+        # Either create a new index or add to the existing one
         if self.vector_store is None:
             self.vector_store = FAISS.from_documents(documents, self.embeddings)
         else:
@@ -53,9 +86,21 @@ class VectorStore:
         return len(documents)
     
     def similarity_search(self, query: str, k: int = 5) -> List[Dict]:
-        """Search for similar documents."""
+        """Find documents similar to the query."""
         if self.vector_store is None:
             return []
+        
+        # Get a fresh key if we're rotating them
+        if self.api_key_manager:
+            try:
+                current_key = self.api_key_manager.get_next_key()
+                self.embeddings = GoogleGenerativeAIEmbeddings(
+                    model="models/text-embedding-004",
+                    google_api_key=current_key
+                )
+            except RuntimeError as e:
+                print(f"❌ Key rotation error: {e}")
+                raise
         
         results = self.vector_store.similarity_search_with_score(query, k=k)
         
@@ -69,13 +114,13 @@ class VectorStore:
         ]
     
     def save(self):
-        """Save the index to disk."""
+        """Save the index to disk so we don't lose it."""
         if self.vector_store:
             os.makedirs(self.index_path, exist_ok=True)
             self.vector_store.save_local(self.index_path)
     
     def load(self):
-        """Load the index from disk."""
+        """Load a previously saved index from disk."""
         self.vector_store = FAISS.load_local(
             self.index_path,
             self.embeddings,
@@ -83,7 +128,7 @@ class VectorStore:
         )
     
     def get_stats(self) -> Dict[str, Any]:
-        """Get index statistics."""
+        """Get some basic stats about the index."""
         if self.vector_store is None:
             return {
                 'total_documents': 0,
@@ -98,5 +143,5 @@ class VectorStore:
         }
 
 
-def create_vector_store(index_path: str = "app/db/faiss_index", google_api_key: Optional[str] = None) -> VectorStore:
-    return VectorStore(index_path, google_api_key)
+def create_vector_store(index_path: str = "app/db/faiss_index", api_key_manager=None, google_api_key: Optional[str] = None) -> VectorStore:
+    return VectorStore(index_path, api_key_manager, google_api_key)

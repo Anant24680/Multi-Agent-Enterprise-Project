@@ -52,5 +52,18 @@ Thumbs.db
 SETUP.md
 LEARNING_GUIDE.md
 
+# Troubleshooting & Debug Guides (temporary files, not for production)
+FIX_MODEL_NAME_NOW.md
+MODEL_SWITCH_GUIDE.md
+SERVER_RESTART_GUIDE.md
+TESTING_UPLOAD.md
+check_config.py
+
+# Build/Reference Documents (not part of the codebase)
+*.docx
+*.doc
+Multi-agent*.docx
+
 # Antigravity artifacts (AI assistant files)
 .gemini/
+

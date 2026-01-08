@@ -8,7 +8,7 @@ from app.models.schemas import DocumentChunk
 
 
 class DocumentLoader:
-    """Loads and chunks PDF documents."""
+    """Loads PDFs and breaks them into manageable chunks."""
     
     def __init__(self, chunk_size: int = 800, chunk_overlap: int = 100):
         self.chunk_size = chunk_size
@@ -16,11 +16,11 @@ class DocumentLoader:
         self.tokenizer = tiktoken.get_encoding("cl100k_base")
     
     def process_document(self, pdf_path: str) -> List[DocumentChunk]:
-        """Load PDF and split into chunks."""
+        """Load a PDF and split it into chunks."""
         filename = Path(pdf_path).name
         doc = fitz.open(pdf_path)
         
-        # Extract text from each page
+        # Pull out text from each page
         pages_text = []
         for page_num, page in enumerate(doc, 1):
             text = page.get_text()
@@ -29,13 +29,13 @@ class DocumentLoader:
         
         doc.close()
         
-        # Chunk the text
+        # Break the text into chunks
         all_chunks = []
         for page_num, text in pages_text:
             chunks = self._chunk_text(text, page_num)
             all_chunks.extend(chunks)
         
-        # Create DocumentChunk objects
+        # Turn everything into proper DocumentChunk objects
         total_chunks = len(all_chunks)
         return [
             DocumentChunk(
@@ -49,13 +49,13 @@ class DocumentLoader:
         ]
     
     def _clean_text(self, text: str) -> str:
-        """Clean extracted text."""
+        """Clean up the extracted text to make it more usable."""
         text = re.sub(r'\s+', ' ', text)  # Normalize whitespace
         text = re.sub(r'[^\w\s\.\,\!\?\-\:\;\(\)]', '', text)  # Remove special chars
         return text.strip()
     
     def _chunk_text(self, text: str, page_num: int) -> List[Dict]:
-        """Split text into overlapping chunks."""
+        """Break text into overlapping chunks so we don't lose context."""
         tokens = self.tokenizer.encode(text)
         chunks = []
         

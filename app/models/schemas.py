@@ -2,7 +2,7 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 
-# API Models
+# What the API expects and returns
 class QueryRequest(BaseModel):
     question: str = Field(..., min_length=1)
     top_k: Optional[int] = Field(5, ge=1, le=20)
@@ -31,7 +31,7 @@ class UploadResponse(BaseModel):
     message: str
 
 
-# Agent State
+# How agents pass data between each other
 class AgentState(BaseModel):
     question: str
     top_k: int = 5
@@ -54,7 +54,7 @@ class AgentState(BaseModel):
         arbitrary_types_allowed = True
 
 
-# Document Models
+# How we represent document chunks
 class DocumentChunk(BaseModel):
     content: str
     filename: str

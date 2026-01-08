@@ -1,7 +1,13 @@
 import os
+import sys
 from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
+
+# Make sure Windows console can handle UTF-8
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8')
+
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,6 +19,7 @@ from app.agents.retrieval import RetrievalAgent
 from app.agents.reasoning import ReasoningAgent
 from app.agents.verifier import VerificationAgent
 from app.agents.workflow import WorkflowOrchestrator
+from app.utils.api_key_manager import APIKeyManager
 
 load_dotenv()
 
@@ -30,29 +37,40 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Paths
+# Where we'll store uploaded files
 UPLOAD_DIR = Path("data/documents")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 FAISS_INDEX_PATH = os.getenv("FAISS_INDEX_PATH", "app/db/faiss_index")
 
-# Global components
+# These get set up when the app starts
 vector_store: Optional[VectorStore] = None
 document_loader: Optional[DocumentLoader] = None
 workflow: Optional[WorkflowOrchestrator] = None
+api_key_manager: Optional[APIKeyManager] = None
 
 
 @app.on_event("startup")
 async def startup_event():
-    global vector_store, document_loader, workflow
+    global vector_store, document_loader, workflow, api_key_manager
     
-    print("🚀 Starting system...")
+    print("🚀 Starting up the system...")
     
     if not os.getenv("GOOGLE_API_KEY"):
-        print("⚠️  WARNING: GOOGLE_API_KEY not found!")
+        print("⚠️  Hmm, can't find GOOGLE_API_KEY in your environment!")
+        return
     
-    # Initialize components
-    google_api_key = os.getenv("GOOGLE_API_KEY")
-    vector_store = VectorStore(index_path=FAISS_INDEX_PATH, google_api_key=google_api_key)
+    # Set up the API key manager to handle rate limits
+    try:
+        api_key_manager = APIKeyManager.from_env("GOOGLE_API_KEY", cooldown_minutes=5)
+    except ValueError as e:
+        print(f"❌ Couldn't set up API Key Manager: {e}")
+        return
+    
+    # Get everything ready
+    vector_store = VectorStore(
+        index_path=FAISS_INDEX_PATH,
+        api_key_manager=api_key_manager
+    )
     
     chunk_size = int(os.getenv("CHUNK_SIZE", "800"))
     chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "100"))
@@ -61,16 +79,19 @@ async def startup_event():
     retrieval_agent = RetrievalAgent(vector_store)
     reasoning_agent = ReasoningAgent(
         model_name=os.getenv("MODEL_NAME", "gemini-1.5-flash-latest"),
-        temperature=float(os.getenv("TEMPERATURE", "0.1"))
+        temperature=float(os.getenv("TEMPERATURE", "0.1")),
+        api_key_manager=api_key_manager
     )
     verification_agent = VerificationAgent(
-        model_name=os.getenv("MODEL_NAME", "gemini-1.5-flash-latest")
+        model_name=os.getenv("MODEL_NAME", "gemini-1.5-flash-latest"),
+        api_key_manager=api_key_manager
     )
     
     workflow = WorkflowOrchestrator(retrieval_agent, reasoning_agent, verification_agent)
     
     stats = vector_store.get_stats()
-    print(f"✓ Ready! Documents: {stats['total_documents']}\n")
+    key_stats = api_key_manager.get_stats()
+    print(f"✓ All set! We've got {stats['total_documents']} documents and {key_stats['total_keys']} API keys ready to go.\n")
 
 
 @app.get("/")
@@ -105,11 +126,17 @@ async def get_stats():
         raise HTTPException(status_code=500, detail="System not initialized")
     
     stats = vector_store.get_stats()
-    return {
+    response = {
         "vector_store": stats,
         "upload_directory": str(UPLOAD_DIR),
         "model": os.getenv("MODEL_NAME", "gemini-1.5-flash-latest")
     }
+    
+    # Include API key stats if we have them
+    if api_key_manager:
+        response["api_key_rotation"] = api_key_manager.get_stats()
+    
+    return response
 
 
 @app.post("/upload", response_model=UploadResponse)
@@ -121,7 +148,7 @@ async def upload_document(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail="System not initialized")
     
     try:
-        # Save file
+        # Save the uploaded file to disk
         file_path = UPLOAD_DIR / file.filename
         with open(file_path, "wb") as f:
             content = await file.read()
@@ -129,11 +156,11 @@ async def upload_document(file: UploadFile = File(...)):
         
         print(f"\n📄 Processing: {file.filename}")
         
-        # Process document
+        # Break it into chunks
         chunks = document_loader.process_document(str(file_path))
         print(f"✓ Created {len(chunks)} chunks")
         
-        # Add to vector store
+        # Add everything to the search index
         vector_store.add_documents(chunks)
         vector_store.save()
         print(f"✓ Added to index\n")

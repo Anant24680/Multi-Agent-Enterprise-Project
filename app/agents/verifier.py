@@ -5,20 +5,41 @@ from app.models.schemas import Source
 
 
 class VerificationAgent:
-    """Validates answers against sources."""
+    """Double-checks that answers are actually supported by the source documents."""
     
-    def __init__(self, model_name: str = "gemini-1.5-flash-latest", temperature: float = 0.0):
-        self.llm = ChatGoogleGenerativeAI(model=model_name, temperature=temperature)
+    def __init__(self, model_name: str = "gemini-1.5-flash-latest", temperature: float = 0.0, api_key_manager=None):
+        """
+        Set up the verification agent.
+        
+        Args:
+            model_name: Which Gemini model to use
+            temperature: Keep at 0 for consistent verification
+            api_key_manager: Optional key manager for rate limits
+        """
+        self.model_name = model_name
+        self.temperature = temperature
+        self.api_key_manager = api_key_manager
+        
+        # Set up the language model
+        if api_key_manager:
+            current_key = api_key_manager.get_next_key()
+            self.llm = ChatGoogleGenerativeAI(
+                model=model_name,
+                temperature=temperature,
+                google_api_key=current_key
+            )
+        else:
+            self.llm = ChatGoogleGenerativeAI(model=model_name, temperature=temperature)
         
         self.prompt = ChatPromptTemplate.from_messages([
-            ("system", """Check if the answer is supported by the sources.
+            ("system", """Your job is to check if the answer is actually backed up by the sources.
 
-Respond in this format:
+Please respond in this format:
 VERIFICATION: [verified/partial/unverified]
-SUPPORTED_CLAIMS: [what's supported]
-UNSUPPORTED_CLAIMS: [what's not supported, or "None"]
-WARNINGS: [any concerns, or "None"]
-RECOMMENDED_SOURCES: [chunk numbers, e.g., "1, 2, 3"]"""),
+SUPPORTED_CLAIMS: [what parts are backed up by the sources]
+UNSUPPORTED_CLAIMS: [what parts aren't backed up, or write "None"]
+WARNINGS: [any concerns you have, or write "None"]
+RECOMMENDED_SOURCES: [which chunk numbers support the answer, like "1, 2, 3"]"""),
             ("user", """Question: {question}
 Answer: {answer}
 Reasoning: {reasoning}
@@ -30,7 +51,7 @@ Sources:
         self.chain = self.prompt | self.llm
     
     def verify(self, query: str, answer: str, reasoning: str, chunks: List[Dict]) -> Dict[str, Any]:
-        """Verify answer against sources."""
+        """Check if the answer is actually supported by the sources."""
         if not answer:
             return {
                 'verification_status': 'unverified',
@@ -41,7 +62,21 @@ Sources:
             }
         
         try:
-            # Format context
+            # Get a fresh API key if we're rotating
+            if self.api_key_manager:
+                try:
+                    current_key = self.api_key_manager.get_next_key()
+                    self.llm = ChatGoogleGenerativeAI(
+                        model=self.model_name,
+                        temperature=self.temperature,
+                        google_api_key=current_key
+                    )
+                    self.chain = self.prompt | self.llm
+                except RuntimeError as e:
+                    print(f"❌ Key rotation error: {e}")
+                    raise
+            
+            # Format the context for verification
             context_parts = []
             for i, chunk in enumerate(chunks, 1):
                 meta = chunk['metadata']
@@ -52,7 +87,7 @@ Sources:
             
             context = "\n---\n".join(context_parts)
             
-            # Verify
+            # Run the verification
             response = self.chain.invoke({
                 'question': query,
                 'answer': answer,
@@ -62,7 +97,7 @@ Sources:
             
             result = self._parse_verification(response.content)
             
-            # Create source objects
+            # Turn the results into proper source objects
             sources = []
             for idx in result['recommended_sources']:
                 if 0 <= idx < len(chunks):
@@ -75,7 +110,7 @@ Sources:
                         relevance_score=chunk['relevance_score']
                     ))
             
-            # Use all chunks if none recommended
+            # If no specific sources were recommended, just use all of them
             if not sources and chunks:
                 for chunk in chunks:
                     sources.append(Source(
@@ -94,7 +129,7 @@ Sources:
                 'error': None
             }
         except Exception as e:
-            # On error, return sources but mark unverified
+            # If verification fails, still return the sources but mark as unverified
             sources = [
                 Source(
                     content=chunk['content'],
@@ -115,7 +150,7 @@ Sources:
             }
     
     def _parse_verification(self, text: str) -> Dict[str, Any]:
-        """Parse verification response."""
+        """Parse the verification response from the model."""
         result = {
             'status': 'partial',
             'warnings': [],
@@ -153,5 +188,5 @@ Sources:
         return result
 
 
-def create_verification_agent(model_name: str = "gemini-1.5-flash-latest") -> VerificationAgent:
-    return VerificationAgent(model_name=model_name)
+def create_verification_agent(model_name: str = "gemini-1.5-flash-latest", api_key_manager=None) -> VerificationAgent:
+    return VerificationAgent(model_name=model_name, api_key_manager=api_key_manager)

@@ -152,3 +152,8 @@ frontend/
 - Research paper exploration
 
 ---
+## Live Demo
+
+Frontend: https://anant24680.github.io/Multi-Agent-Enterprise-Project  
+Backend API: https://multi-agent-enterprise-project.onrender.com  
+

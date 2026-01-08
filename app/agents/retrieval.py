@@ -3,13 +3,13 @@ from app.db.vector_store import VectorStore
 
 
 class RetrievalAgent:
-    """Finds relevant documents for a query."""
+    """Searches through documents to find relevant chunks for a question."""
     
     def __init__(self, vector_store: VectorStore):
         self.vector_store = vector_store
     
     def retrieve(self, query: str, top_k: int = 5) -> Dict[str, Any]:
-        """Search for relevant document chunks."""
+        """Find the most relevant document chunks for this query."""
         if not query or not query.strip():
             return {
                 'chunks': [],

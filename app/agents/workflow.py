@@ -7,7 +7,7 @@ from app.agents.verifier import VerificationAgent
 
 
 class WorkflowOrchestrator:
-    """Coordinates the multi-agent workflow."""
+    """Runs the three agents in sequence: retrieve, reason, then verify."""
     
     def __init__(self, retrieval_agent, reasoning_agent, verification_agent):
         self.retrieval_agent = retrieval_agent
@@ -16,7 +16,7 @@ class WorkflowOrchestrator:
         self.workflow = self._build_workflow()
     
     def _build_workflow(self) -> StateGraph:
-        """Build the LangGraph workflow."""
+        """Set up the workflow graph."""
         workflow = StateGraph(AgentState)
         
         workflow.add_node("retrieval", self._retrieval_node)
@@ -95,9 +95,9 @@ class WorkflowOrchestrator:
         return state
     
     def run(self, question: str, top_k: int = 5) -> AgentState:
-        """Run the workflow for a question."""
+        """Run the whole workflow for a question."""
         print(f"\n{'='*60}")
-        print(f"🚀 Query: {question}")
+        print(f"🚀 Processing: {question}")
         print(f"{'='*60}\n")
         
         initial_state = AgentState(question=question, top_k=top_k)

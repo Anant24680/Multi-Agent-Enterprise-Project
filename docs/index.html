@@ -357,9 +357,11 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'https://multi-agent-enterprise-project.onrender.com';
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8000'
+    : 'https://multi-agent-enterprise-project.onrender.com';
 
-        // Upload functionality
+        // Handle file uploads
         const uploadSection = document.getElementById('uploadSection');
         const fileInput = document.getElementById('fileInput');
         const uploadStatus = document.getElementById('uploadStatus');
@@ -424,7 +426,7 @@
             }
         }
 
-        // Query functionality
+        // Handle questions
         const queryBtn = document.getElementById('queryBtn');
         const queryInput = document.getElementById('queryInput');
         const resultCard = document.getElementById('resultCard');
@@ -446,7 +448,7 @@
                 return;
             }
 
-            // Show loading
+            // Show the loading spinner
             resultCard.classList.remove('hidden');
             loadingSection.classList.remove('hidden');
             answerSection.classList.add('hidden');
@@ -483,15 +485,15 @@
         function formatAnswerText(text) {
             if (!text) return '';
 
-            // Convert email addresses to clickable links
+            // Make email addresses clickable
             text = text.replace(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi,
                 '<a href="mailto:$1" style="color: #667eea; text-decoration: none; font-weight: 500;">$1</a>');
 
-            // Convert phone numbers to clickable links
+            // Make phone numbers clickable
             text = text.replace(/(\+?\d{1}\s?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4})/g,
                 '<a href="tel:$1" style="color: #667eea; text-decoration: none; font-weight: 500;">$1</a>');
 
-            // Convert bullet points (*, -, •) to proper HTML list items
+            // Turn bullet points into proper HTML lists
             const lines = text.split('\n');
             let formattedLines = [];
             let inList = false;
@@ -499,7 +501,7 @@
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim();
 
-                // Check if line starts with bullet point
+                // Check if this line is a bullet point
                 if (line.match(/^[*•-]\s+(.+)/)) {
                     const content = line.replace(/^[*•-]\s+/, '');
                     if (!inList) {
@@ -513,7 +515,7 @@
                         inList = false;
                     }
                     if (line) {
-                        // Check if line contains labels like "Mail:", "Phone:", "Email:"
+                        // Look for labels like "Email:" or "Phone:"
                         const labelMatch = line.match(/^(\*\*)?([A-Za-z]+):(\*\*)?\s*(.+)/);
                         if (labelMatch) {
                             const label = labelMatch[2];
@@ -534,26 +536,26 @@
         }
 
         function displayResults(data) {
-            // Answer
+            // Show the answer
             const answerText = document.getElementById('answerText');
             if (answerText && data.answer) {
                 answerText.innerHTML = formatAnswerText(data.answer);
             }
 
-            // Reasoning
+            // Show the reasoning
             const reasoningText = document.getElementById('reasoningText');
             if (reasoningText && data.reasoning) {
                 reasoningText.textContent = data.reasoning;
             }
 
-            // Verification badge
+            // Show verification status badge
             const badge = document.getElementById('verificationBadge');
             if (badge && data.verification_status) {
                 badge.textContent = data.verification_status;
                 badge.className = 'status-badge status-' + data.verification_status;
             }
 
-            // Warnings
+            // Show any warnings
             const warningsSection = document.getElementById('warningsSection');
             if (warningsSection) {
                 if (data.warnings && data.warnings.length > 0) {
@@ -566,7 +568,7 @@
                 }
             }
 
-            // Sources
+            // Show the sources
             const sourcesContainer = document.getElementById('sourcesContainer');
             if (sourcesContainer) {
                 if (data.sources && data.sources.length > 0) {
